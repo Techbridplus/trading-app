@@ -6,6 +6,10 @@ export function isOutdatedEvent(
   event: RiskEvent
 ): boolean {
   const eventTime = new Date(event.timestamp).getTime();
+  
+  if (isNaN(eventTime)) {
+    throw new Error("Invalid event timestamp");
+  }
 
   return eventTime <= accountState.lastProcessedAt;
 }

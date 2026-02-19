@@ -6,7 +6,7 @@ import { saveApiKey } from "../db/mockDb";
 const router = Router();
 
 router.post("/api/keys", (req, res) => {
-  const { accountId } = req.body;
+  const { accountId } = req.body ?? {};
 
   if (!accountId) {
     return res.status(400).json({ error: "accountId is required" });

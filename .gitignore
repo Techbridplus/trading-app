@@ -37,3 +37,4 @@ jest-results/
 
 # Optional: lock file (only if you prefer not to commit it)
 # package-lock.json
+/generated/prisma

@@ -1,3 +1,10 @@
+export type AccountStatus =
+  | "SAFE"
+  | "CAUTION_80"
+  | "CRITICAL_95"
+  | "LOCKED_DAILY"
+  | "LOCKED_PERMANENT";
+
 export interface AccountState {
   accountId: string;
 
@@ -13,16 +20,10 @@ export interface AccountState {
   dailyLossLimitAmount: number;
   totalLossLimitAmount: number;
 
-  status:
-    | "SAFE"
-    | "CAUTION_80"
-    | "CRITICAL_95"
-    | "LOCKED_DAILY"
-    | "LOCKED_PERMANENT";
+  status: AccountStatus;
 
   timezone: string;
 
   lastDailyReset: string;
-
-  lastProcessedAt: number; // ← NEW (epoch ms)
+  lastProcessedAt: number;
 }

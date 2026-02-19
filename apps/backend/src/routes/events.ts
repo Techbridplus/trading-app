@@ -5,7 +5,7 @@ import { riskQueue } from "../queue/riskQueue";
 const router = Router();
 
 router.post("/events", apiKeyAuth, async (req: AuthenticatedRequest, res) => {
-  const { type, balance, equity, timestamp, eventId } = req.body;
+  const { type, balance, equity, timestamp, eventId } = req.body ?? {};
 
   if (!type || balance == null || equity == null || !timestamp || !eventId) {
     return res.status(400).json({ error: "Invalid event payload" });
