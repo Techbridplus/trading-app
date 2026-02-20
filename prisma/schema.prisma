@@ -5,23 +5,26 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Account {
-  id                String   @id
-  initialBalance    Float
-  dailyLossPercent  Float
-  totalLossPercent  Float
-  timezone          String
-  createdAt         DateTime @default(now())
+  id                 String   @id
+  initialBalance     Float
+  dailyLossPercent   Float
+  totalLossPercent   Float
+  timezone           String
 
-  riskSnapshots     RiskSnapshot[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  riskSnapshots      RiskSnapshot[]
+  apiKeys            ApiKey[]
 }
 
 model RiskSnapshot {
@@ -31,6 +34,16 @@ model RiskSnapshot {
   balance      Float
   equity       Float
   timestamp    DateTime
+  createdAt    DateTime @default(now())
+
+  account      Account  @relation(fields: [accountId], references: [id])
+}
+
+model ApiKey {
+  id           String   @id @default(cuid())
+  accountId    String
+  prefix       String   @unique
+  hashedSecret String
   createdAt    DateTime @default(now())
 
   account      Account  @relation(fields: [accountId], references: [id])

@@ -1,13 +1,14 @@
 import { Request, Response, NextFunction } from "express";
-import { findByPrefix } from "../db/mockDb";
-import { hashApiKey } from "../utils/hash";
-import { logger } from "../logger";
+import crypto from "crypto";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 export interface AuthenticatedRequest extends Request {
   accountId?: string;
 }
 
-export function apiKeyAuth(
+export async function apiKeyAuth(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
@@ -15,48 +16,33 @@ export function apiKeyAuth(
   const apiKey = req.header("x-api-key");
 
   if (!apiKey) {
-    logger.warn(
-      { path: req.path, ip: req.ip },
-      "Missing API key on authenticated route"
-    );
-    return res.status(401).json({ error: "API key required" });
+    return res.status(401).json({ error: "Missing API key" });
   }
 
-  const parts = apiKey.split(".");
+  const [prefix, secret] = apiKey.split(".");
 
-  if (parts.length !== 2) {
-    logger.warn({ path: req.path, ip: req.ip }, "Invalid API key format");
+  if (!prefix || !secret) {
     return res.status(401).json({ error: "Invalid API key format" });
   }
 
-  const [prefix, secret] = parts;
+  const keyRecord = await prisma.apiKey.findUnique({
+    where: { prefix },
+  });
 
-  const record = findByPrefix(prefix);
+  if (!keyRecord) {
+    return res.status(401).json({ error: "API key not found" });
+  }
 
-  if (!record) {
-    logger.warn(
-      { path: req.path, ip: req.ip, apiKeyPrefix: prefix },
-      "API key prefix not found"
-    );
+  const hashedSecret = crypto
+    .createHash("sha256")
+    .update(secret)
+    .digest("hex");
+
+  if (hashedSecret !== keyRecord.hashedSecret) {
     return res.status(401).json({ error: "Invalid API key" });
   }
 
-  const hashedSecret = hashApiKey(secret);
-
-  if (hashedSecret !== record.apiKeyHash) {
-    logger.warn(
-      { path: req.path, ip: req.ip, apiKeyPrefix: prefix },
-      "API key secret mismatch"
-    );
-    return res.status(401).json({ error: "Invalid API key" });
-  }
-
-  // Attach accountId to request
-  req.accountId = record.accountId;
-  logger.info(
-    { path: req.path, accountId: record.accountId },
-    "API key authentication successful"
-  );
+  req.accountId = keyRecord.accountId;
 
   next();
 }

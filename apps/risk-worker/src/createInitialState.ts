@@ -1,39 +1,44 @@
 import { AccountState } from "../../../packages/shared-types/account";
 
+interface AccountConfig {
+  id: string;
+  initialBalance: number;
+  dailyLossPercent: number;
+  totalLossPercent: number;
+  timezone: string;
+}
+
 export function createInitialState(
-  accountId: string,
-  initialBalance: number,
-  timezone: string
+  config: AccountConfig,
+  currentBalance: number
 ): AccountState {
-  const dailyLossPercent = 5;
-  const totalLossPercent = 10;
 
   const dailyLossLimitAmount =
-    initialBalance * (dailyLossPercent / 100);
+    config.initialBalance * (config.dailyLossPercent / 100);
 
   const totalLossLimitAmount =
-    initialBalance * (totalLossPercent / 100);
+    config.initialBalance * (config.totalLossPercent / 100);
 
   return {
-    accountId,
+    accountId: config.id,
 
-    initialBalance,
-    startOfDayBalance: initialBalance,
+    initialBalance: config.initialBalance,
+    startOfDayBalance: currentBalance,
 
-    currentBalance: initialBalance,
-    currentEquity: initialBalance,
+    currentBalance,
+    currentEquity: currentBalance,
 
-    dailyLossPercent,
-    totalLossPercent,
+    dailyLossPercent: config.dailyLossPercent,
+    totalLossPercent: config.totalLossPercent,
 
     dailyLossLimitAmount,
     totalLossLimitAmount,
 
     status: "SAFE",
 
-    timezone,
-    lastDailyReset: new Date().toISOString().split("T")[0],
+    timezone: config.timezone,
 
+    lastDailyReset: new Date().toISOString().split("T")[0],
     lastProcessedAt: 0,
   };
 }

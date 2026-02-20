@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../../generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { AccountState } from "../../../packages/shared-types/account";
 import { logger } from "./logger";
 

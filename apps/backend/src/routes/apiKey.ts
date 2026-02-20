@@ -1,32 +1,26 @@
 import { Router } from "express";
-import { generateApiKey } from "../utils/generateApiKey";
-import { hashApiKey } from "../utils/hash";
-import { saveApiKey } from "../db/mockDb";
+import { createApiKey } from "../services/apiKeyService";
+import { logger } from "../logger";
 
 const router = Router();
 
-router.post("/api/keys", (req, res) => {
-  const { accountId } = req.body ?? {};
+router.post("/api/keys", async (req, res) => {
+  try {
+    const { accountId } = req.body;
 
-  if (!accountId) {
-    return res.status(400).json({ error: "accountId is required" });
+    if (!accountId) {
+      return res.status(400).json({ error: "accountId required" });
+    }
+
+    const apiKey = await createApiKey(accountId);
+
+    logger.info({ accountId }, "API key created");
+
+    return res.status(201).json({ apiKey });
+  } catch (error) {
+    logger.error({ err: error }, "Failed to create API key");
+    return res.status(500).json({ error: "Internal server error" });
   }
-
-  const { prefix, secret, fullKey } = generateApiKey();
-
-  const hashedSecret = hashApiKey(secret);
-
-  saveApiKey({
-    accountId,
-    apiKeyPrefix: prefix,
-    apiKeyHash: hashedSecret,
-    revoked: false,
-  });
-
-  return res.status(201).json({
-    apiKey: fullKey, // show only once
-    message: "Save this key securely. It will not be shown again.",
-  });
 });
 
 export default router;

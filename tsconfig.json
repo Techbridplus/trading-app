@@ -6,7 +6,9 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "ignoreDeprecations": "6.0"
   },
   "include": ["apps/**/*", "packages/**/*", "generated/**/*"]
 }
+
