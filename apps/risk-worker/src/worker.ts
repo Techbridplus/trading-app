@@ -92,6 +92,9 @@ const worker = new Worker(
         equity: finalState.currentEquity,
         balance: finalState.currentBalance,
         dailyBase: finalState.startOfDayBalance,
+        initialBalance: finalState.initialBalance,
+        dailyLimit: finalState.dailyLossPercent,
+        totalLimit: finalState.totalLossPercent,
         timestamp: event.timestamp,
       })
     );
