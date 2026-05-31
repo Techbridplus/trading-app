@@ -9,18 +9,34 @@ router.post("/events", apiKeyAuth, async (req: AuthenticatedRequest, res) => {
   
   try {
     const { balance, equity, timestamp, eventId } = req.body;
+    const accountId = req.accountId;
 
-    if (balance == null || equity == null || !timestamp || !eventId) {
+    if (!accountId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const parsedTimestamp = new Date(timestamp);
+
+    if (
+      typeof eventId !== "string" ||
+      typeof balance !== "number" ||
+      !Number.isFinite(balance) ||
+      typeof equity !== "number" ||
+      !Number.isFinite(equity) ||
+      typeof timestamp !== "string" ||
+      Number.isNaN(parsedTimestamp.getTime())
+    ) {
       return res.status(400).json({ error: "Invalid event payload" });
     }
 
     await riskQueue.add(
       "process-event",
       {
-        accountId: req.accountId,
+        accountId,
         event: req.body,
       },
       {
+        jobId: `${accountId}:${eventId}`,
         attempts: 3,
         backoff: {
           type: "exponential",
@@ -32,7 +48,7 @@ router.post("/events", apiKeyAuth, async (req: AuthenticatedRequest, res) => {
     );
 
     logger.info(
-      { accountId: req.accountId, eventId },
+      { accountId, eventId },
       "Event queued"
     );
 

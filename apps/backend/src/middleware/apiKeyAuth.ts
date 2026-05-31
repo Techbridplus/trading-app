@@ -8,21 +8,15 @@ export interface AuthenticatedRequest extends Request {
   accountId?: string;
 }
 
-export async function apiKeyAuth(
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-) {
-  const apiKey = req.header("x-api-key");
-
+export async function getAccountIdFromApiKey(apiKey?: string): Promise<string | null> {
   if (!apiKey) {
-    return res.status(401).json({ error: "Missing API key" });
+    return null;
   }
 
   const [prefix, secret] = apiKey.split(".");
 
   if (!prefix || !secret) {
-    return res.status(401).json({ error: "Invalid API key format" });
+    return null;
   }
 
   const keyRecord = await prisma.apiKey.findUnique({
@@ -30,7 +24,7 @@ export async function apiKeyAuth(
   });
 
   if (!keyRecord) {
-    return res.status(401).json({ error: "API key not found" });
+    return null;
   }
 
   const hashedSecret = crypto
@@ -38,11 +32,37 @@ export async function apiKeyAuth(
     .update(secret)
     .digest("hex");
 
-  if (hashedSecret !== keyRecord.hashedSecret) {
-    return res.status(401).json({ error: "Invalid API key" });
+  const hashedBuffer = Buffer.from(hashedSecret, "utf8");
+  const storedBuffer = Buffer.from(keyRecord.hashedSecret, "utf8");
+
+  if (hashedBuffer.length !== storedBuffer.length) {
+    return null;
   }
 
-  req.accountId = keyRecord.accountId;
+  const valid = crypto.timingSafeEqual(hashedBuffer, storedBuffer);
 
-  next();
+  if (!valid) {
+    return null;
+  }
+
+  return keyRecord.accountId;
+}
+
+export async function apiKeyAuth(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const accountId = await getAccountIdFromApiKey(req.header("x-api-key"));
+
+    if (!accountId) {
+      return res.status(401).json({ error: "Invalid API key" });
+    }
+
+    req.accountId = accountId;
+    next();
+  } catch (_error) {
+    return res.status(500).json({ error: "Auth service unavailable" });
+  }
 }

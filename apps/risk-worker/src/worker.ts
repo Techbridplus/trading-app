@@ -10,6 +10,7 @@ import { isDuplicateEvent } from "./idempotency";
 import { persistMilestone } from "./persistence";
 import { logger } from "./logger";
 import { getAccountConfig } from "./accountRepository";
+import { publishCommandIfStatusChanged } from "./commandPublisher";
 
 const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
 const url = new URL(redisUrl);
@@ -65,6 +66,11 @@ const worker = new Worker(
     const previousStatus = accountState.status;
 
     const newState = evaluateRisk(accountState, event);
+    await publishCommandIfStatusChanged(
+      previousStatus,
+      newState.status,
+      accountId
+    );
 
     const eventTime = new Date(event.timestamp).getTime();
 

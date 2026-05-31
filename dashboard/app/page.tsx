@@ -18,6 +18,8 @@ interface RiskUpdate {
 export default function Home() {
   const [connected, setConnected] = useState(false);
   const [data, setData] = useState<RiskUpdate | null>(null);
+  const accountId = process.env.NEXT_PUBLIC_ACCOUNT_ID || "acc_1771588437738";
+  const socketApiKey = process.env.NEXT_PUBLIC_SOCKET_API_KEY || "";
 
   useEffect(() => {
     const socket = io("http://localhost:4001");
@@ -26,7 +28,10 @@ export default function Home() {
       console.log("Connected to server");
       setConnected(true);
 
-      socket.emit("join-account", "acc_1771588437738");
+      socket.emit("join-account", {
+        accountId,
+        apiKey: socketApiKey,
+      });
     });
 
     socket.on("risk-update", (update: RiskUpdate) => {
@@ -65,7 +70,7 @@ export default function Home() {
           <div className="text-2xl mb-4">✓ Connected</div>
           <div className="text-gray-400 mb-4">Waiting for risk updates...</div>
           <div className="text-sm text-gray-500">
-            Account: acc_1771588437738
+            Account: {accountId}
           </div>
           <div className="text-xs text-gray-600 mt-4">
             (Send events via /events endpoint)

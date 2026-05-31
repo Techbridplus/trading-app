@@ -15,14 +15,13 @@ export async function isDuplicateEvent(
 
   const key = getKey(accountId, eventId);
 
-  const exists = await redis.get(key);
+  const setResult = await redis.set(
+    key,
+    "1",
+    "EX",
+    IDEMPOTENCY_TTL_SECONDS,
+    "NX"
+  );
 
-  if (exists) {
-    return true;
-  }
-
-  // Mark event as processed
-  await redis.set(key, "1", "EX", IDEMPOTENCY_TTL_SECONDS);
-
-  return false;
+  return setResult !== "OK";
 }

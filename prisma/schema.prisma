@@ -25,6 +25,8 @@ model Account {
 
   riskSnapshots      RiskSnapshot[]
   apiKeys            ApiKey[]
+  tradeCommands     TradeCommand[]
+  closureLogs       ClosureLog[]
 }
 
 model RiskSnapshot {
@@ -44,7 +46,43 @@ model ApiKey {
   accountId    String
   prefix       String   @unique
   hashedSecret String
+  name         String?
+  expiresAt    DateTime?
+  revokedAt    DateTime?
+  lastUsedAt   DateTime?
   createdAt    DateTime @default(now())
 
   account      Account  @relation(fields: [accountId], references: [id])
+
+  @@index([accountId, revokedAt])
+}
+
+model TradeCommand {
+  id            String   @id @default(cuid())
+  accountId     String
+  command       String   // CLOSE_ALL, DISABLE_TRADING, ALERT_ONLY
+  reason        String   // LOCKED_DAILY, CRITICAL_95, etc.
+  executed      Boolean  @default(false)
+  executedAt    DateTime?
+  createdAt     DateTime @default(now())
+
+  account       Account  @relation(fields: [accountId], references: [id])
+  closureLog    ClosureLog?
+
+  @@index([accountId, executed, createdAt])
+}
+
+model ClosureLog {
+  id                String   @id @default(cuid())
+  commandId         String?  @unique
+  accountId         String
+  reason            String
+  closedPositions   Int
+  totalPnL          Float
+  createdAt         DateTime @default(now())
+
+  command           TradeCommand? @relation(fields: [commandId], references: [id])
+  account           Account  @relation(fields: [accountId], references: [id])
+
+  @@index([accountId, createdAt])
 }

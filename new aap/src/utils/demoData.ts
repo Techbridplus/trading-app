@@ -1,0 +1,57 @@
+import type { Comment } from "@/types";
+import { generateAvatarUrl } from "./pickWinners";
+
+export function getDemoComments(): Comment[] {
+  const samples = [
+    { username: "sarah_creates", text: "Love this! Tagging @mike_j @lisa_art for the giveaway 🎉", likes: 42 },
+    { username: "mike_j", text: "Count me in! @sarah_creates @designhub", likes: 18 },
+    { username: "lisa_art", text: "@sarah_creates @mike_j amazing post!", likes: 31 },
+    { username: "tech_ninja", text: "Need this! @friend_one @friend_two @friend_three", likes: 55 },
+    { username: "friend_one", text: "@tech_ninja let's go!", likes: 7 },
+    { username: "designhub", text: "So good 🔥 @sarah_creates", likes: 24 },
+    { username: "photo_mike", text: "Done! @bestie @cousin @neighbor", likes: 12 },
+    { username: "bestie", text: "@photo_mike tagged!", likes: 3 },
+    { username: "travel_bug", text: "This is incredible @wanderlust @globetrotter", likes: 89 },
+    { username: "wanderlust", text: "@travel_bug yes please!", likes: 15 },
+    { username: "globetrotter", text: "In! @travel_bug", likes: 9 },
+    { username: "coffee_addict", text: "☕ @barista_ben @cafe_lover", likes: 27 },
+    { username: "barista_ben", text: "@coffee_addict count us both!", likes: 11 },
+    { username: "cafe_lover", text: "Yes! @coffee_addict @barista_ben", likes: 8 },
+    { username: "fitness_guru", text: "Motivation! @gym_buddy", likes: 44 },
+    { username: "gym_buddy", text: "@fitness_guru let's win this", likes: 6 },
+    { username: "bookworm_22", text: "Reading list goals 📚 @page_turner", likes: 19 },
+    { username: "page_turner", text: "@bookworm_22 @author_fan tagged", likes: 14 },
+    { username: "author_fan", text: "@page_turner @bookworm_22 in!", likes: 5 },
+    { username: "music_maker", text: "🎵 @bandmate @producer_life @studio_rat", likes: 67 },
+    { username: "bandmate", text: "@music_maker we're in!", likes: 22 },
+    { username: "producer_life", text: "@music_maker @bandmate let's go", likes: 16 },
+    { username: "studio_rat", text: "Tagged @music_maker", likes: 4 },
+    { username: "foodie_finds", text: "Yum! @chef_friend @kitchen_pro", likes: 38 },
+    { username: "chef_friend", text: "@foodie_finds @kitchen_pro done", likes: 13 },
+    { username: "kitchen_pro", text: "@foodie_finds yes!", likes: 7 },
+    { username: "gaming_legend", text: "GG @squad_leader @noob_slayer @pro_gamer", likes: 102 },
+    { username: "squad_leader", text: "@gaming_legend let's win", likes: 28 },
+    { username: "noob_slayer", text: "@gaming_legend @squad_leader in", likes: 19 },
+    { username: "pro_gamer", text: "@gaming_legend tagged all", likes: 11 },
+    { username: "simple_user", text: "Great post!", likes: 2 },
+    { username: "another_one", text: "Following for more content", likes: 1 },
+    { username: "minimal_mention", text: "Hey @someone", likes: 4 },
+    { username: "double_tag", text: "@user_a @user_b please pick me!", likes: 33 },
+    { username: "user_a", text: "@double_tag good luck!", likes: 8 },
+    { username: "user_b", text: "@double_tag fingers crossed", likes: 6 },
+    { username: "triple_threat", text: "@alpha @beta @gamma all in!", likes: 45 },
+    { username: "alpha", text: "@triple_threat @beta let's go", likes: 12 },
+    { username: "beta", text: "@triple_threat tagged", likes: 9 },
+    { username: "gamma", text: "@alpha @beta @triple_threat", likes: 7 },
+  ];
+
+  return samples.map((s, i) => ({
+    id: `demo-${i}`,
+    username: s.username,
+    displayName: s.username.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+    profilePicture: generateAvatarUrl(s.username),
+    text: s.text,
+    mentionCount: (s.text.match(/(?<![\w.])@[\w.]+/g) ?? []).length,
+    likes: s.likes,
+  }));
+}
