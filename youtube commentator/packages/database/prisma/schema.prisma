@@ -1,0 +1,318 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────
+// Module 1: Authentication System
+// ──────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String
+  passwordHash   String    @map("password_hash")
+  avatarUrl      String?   @map("avatar_url")
+  emailVerified  Boolean   @default(false) @map("email_verified")
+  role           Role      @default(USER)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  sessions       Session[]
+  googleAccounts GoogleAccount[]
+  channels       Channel[]
+  groups         Group[]
+  jobs           Job[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  settings       Settings?
+
+  @@map("users")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  refreshToken String   @unique @map("refresh_token")
+  userAgent    String?  @map("user_agent")
+  ipAddress    String?  @map("ip_address")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ──────────────────────────────────────────
+// Module 2 & 10: Google Account & OAuth
+// ──────────────────────────────────────────
+
+model GoogleAccount {
+  id             String        @id @default(cuid())
+  userId         String        @map("user_id")
+  googleId       String        @unique @map("google_id")
+  email          String
+  displayName    String        @map("display_name")
+  profilePicture String?       @map("profile_picture")
+  scopes         String[]
+  status         AccountStatus @default(ACTIVE)
+  connectedAt    DateTime      @default(now()) @map("connected_at")
+  lastSyncedAt   DateTime?     @map("last_synced_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oauthToken OAuthToken?
+  channels   Channel[]
+
+  @@index([userId])
+  @@map("google_accounts")
+}
+
+enum AccountStatus {
+  ACTIVE
+  EXPIRED
+  DISCONNECTED
+  ERROR
+}
+
+model OAuthToken {
+  id              String   @id @default(cuid())
+  googleAccountId String   @unique @map("google_account_id")
+  accessToken     String   @map("access_token")
+  refreshToken    String   @map("refresh_token")
+  tokenType       String   @default("Bearer") @map("token_type")
+  expiresAt       DateTime @map("expires_at")
+  lastRefreshedAt DateTime @default(now()) @map("last_refreshed_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  googleAccount GoogleAccount @relation(fields: [googleAccountId], references: [id], onDelete: Cascade)
+
+  @@map("oauth_tokens")
+}
+
+// ──────────────────────────────────────────
+// Module 3: Channel Discovery
+// ──────────────────────────────────────────
+
+model Channel {
+  id              String        @id @default(cuid())
+  userId          String        @map("user_id")
+  googleAccountId String        @map("google_account_id")
+  youtubeId       String        @unique @map("youtube_id")
+  title           String
+  handle          String?
+  description     String?
+  thumbnailUrl    String?       @map("thumbnail_url")
+  bannerUrl       String?       @map("banner_url")
+  subscriberCount Int           @default(0) @map("subscriber_count")
+  videoCount      Int           @default(0) @map("video_count")
+  viewCount       BigInt        @default(0) @map("view_count")
+  country         String?
+  language        String?
+  isBrandAccount  Boolean       @default(false) @map("is_brand_account")
+  isFavorite      Boolean       @default(false) @map("is_favorite")
+  tags            String[]      @default([])
+  status          ChannelStatus @default(ACTIVE)
+  lastSyncedAt    DateTime?     @map("last_synced_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  googleAccount GoogleAccount  @relation(fields: [googleAccountId], references: [id], onDelete: Cascade)
+  groupMembers  GroupMember[]
+  jobs          Job[]
+
+  @@index([userId])
+  @@index([googleAccountId])
+  @@index([title])
+  @@index([handle])
+  @@map("channels")
+}
+
+enum ChannelStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+  SYNCING
+}
+
+// ──────────────────────────────────────────
+// Module 5: Channel Groups
+// ──────────────────────────────────────────
+
+model Group {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  name        String
+  description String?
+  color       String   @default("#3b82f6")
+  icon        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members GroupMember[]
+
+  @@unique([userId, name])
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  groupId   String   @map("group_id")
+  channelId String   @map("channel_id")
+  addedAt   DateTime @default(now()) @map("added_at")
+
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, channelId])
+  @@map("group_members")
+}
+
+// ──────────────────────────────────────────
+// Module 7: Operation Engine / Jobs
+// ──────────────────────────────────────────
+
+model Job {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  channelId     String?   @map("channel_id")
+  type          JobType
+  status        JobStatus @default(PENDING)
+  priority      Int       @default(0)
+  payload       Json?
+  progress      Int       @default(0)
+  result        Json?
+  errorMessage  String?   @map("error_message")
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(3) @map("max_attempts")
+  scheduledAt   DateTime? @map("scheduled_at")
+  startedAt     DateTime? @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  executionTime Int?      @map("execution_time")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@map("jobs")
+}
+
+enum JobType {
+  CHANNEL_SYNC
+  BULK_OPERATION
+  TOKEN_REFRESH
+  ANALYTICS_UPDATE
+  NOTIFICATION_SEND
+  DATA_CLEANUP
+}
+
+enum JobStatus {
+  PENDING
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  RETRYING
+}
+
+// ──────────────────────────────────────────
+// Module 12: Notifications
+// ──────────────────────────────────────────
+
+model Notification {
+  id        String             @id @default(cuid())
+  userId    String             @map("user_id")
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  read      Boolean            @default(false)
+  readAt    DateTime?          @map("read_at")
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  OAUTH_EXPIRED
+  OAUTH_REFRESHED
+  SYNC_COMPLETE
+  SYNC_FAILED
+  OPERATION_COMPLETE
+  OPERATION_FAILED
+  ACCOUNT_CONNECTED
+  ACCOUNT_DISCONNECTED
+  SYSTEM
+}
+
+// ──────────────────────────────────────────
+// Module 11: Activity / Audit Logs
+// ──────────────────────────────────────────
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  action          String
+  entityType      String   @map("entity_type")
+  entityId        String?  @map("entity_id")
+  details         Json?
+  ipAddress       String?  @map("ip_address")
+  userAgent       String?  @map("user_agent")
+  executionTimeMs Int?     @map("execution_time_ms")
+  status          String   @default("success")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ──────────────────────────────────────────
+// Module 14: User Settings
+// ──────────────────────────────────────────
+
+model Settings {
+  id                    String   @id @default(cuid())
+  userId                String   @unique @map("user_id")
+  theme                 String   @default("dark")
+  timezone              String   @default("UTC")
+  language              String   @default("en")
+  defaultView           String   @default("grid") @map("default_view")
+  defaultSort           String   @default("name") @map("default_sort")
+  notifyEmail           Boolean  @default(true) @map("notify_email")
+  notifyInApp           Boolean  @default(true) @map("notify_in_app")
+  notifyWebhook         Boolean  @default(false) @map("notify_webhook")
+  webhookUrl            String?  @map("webhook_url")
+  apiRateLimit          Int      @default(100) @map("api_rate_limit")
+  autoSyncInterval      Int      @default(60) @map("auto_sync_interval")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("settings")
+}

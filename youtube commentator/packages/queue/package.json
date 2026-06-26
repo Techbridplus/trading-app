@@ -1,0 +1,14 @@
+{
+  "name": "@repo/queue",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "bullmq": "^5.31.0",
+    "ioredis": "^5.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,93 @@
+version: '3.9'
+
+services:
+  # ── PostgreSQL Database ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: ytmanager-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ytmanager
+      POSTGRES_PASSWORD: ytmanager_password
+      POSTGRES_DB: youtube_manager
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ytmanager -d youtube_manager"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis Cache & Queue ──
+  redis:
+    image: redis:7-alpine
+    container_name: ytmanager-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── API Server ──
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: ytmanager-api
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      APP_PORT: 4000
+      DATABASE_URL: postgresql://ytmanager:ytmanager_password@postgres:5432/youtube_manager?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: super-secret-jwt-key-change-in-production-2024
+      JWT_REFRESH_SECRET: super-secret-refresh-key-change-in-production-2024
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      TOKEN_ENCRYPTION_KEY: 32-char-encryption-key-change-me!
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Dashboard (Next.js) ──
+  dashboard:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dashboard
+    container_name: ytmanager-dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - api
+
+  # ── Nginx Reverse Proxy ──
+  nginx:
+    image: nginx:alpine
+    container_name: ytmanager-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - dashboard
+
+volumes:
+  postgres_data:
+  redis_data:
